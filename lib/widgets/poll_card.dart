@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class PollCard extends StatelessWidget {
   final Map<String, dynamic> poll;
@@ -8,6 +9,13 @@ class PollCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Format dates for better readability
+    final DateFormat dateFormatter = DateFormat('MMM dd, yyyy');
+    final String startDate =
+        dateFormatter.format(poll['startDate']);
+    final String endDate =
+        dateFormatter.format(poll['endDate']);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: Card(
@@ -32,8 +40,8 @@ class PollCard extends StatelessWidget {
                   // Placeholder image with rounded corners
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      'https://via.placeholder.com/350x200',
+                    child: Image.asset(
+                      'assets/images/poll.jpg',
                       fit: BoxFit.cover,
                       height: 200,
                       width: double.infinity,
@@ -47,9 +55,11 @@ class PollCard extends StatelessWidget {
                         fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  // Poll date
-                  Text('Date: ${poll['date']}',
-                      style: GoogleFonts.montserrat(fontSize: 14)),
+                  // Display both start and end dates
+                  Text(
+                    'Start: $startDate | End: $endDate',
+                    style: GoogleFonts.montserrat(fontSize: 14),
+                  ),
                   const SizedBox(height: 8),
                   // Button to navigate to the poll details screen
                   ElevatedButton(

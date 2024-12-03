@@ -1,5 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CreatePollScreen extends StatefulWidget {
   const CreatePollScreen({super.key});
@@ -39,29 +41,67 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
     });
   }
 
-  void _submitPoll() {
+  Future<void> _submitPoll() async {
     if (_formKey.currentState!.validate()) {
       final pollTitle = _pollTitleController.text;
       final pollDescription = _pollDescriptionController.text;
       final candidates =
           _candidateControllers.map((controller) => controller.text).toList();
 
-      // Logic to create the poll in the database (Firebase, etc.)
+      try {
+        // Create poll document in Firestore
+        final pollRef = FirebaseFirestore.instance.collection('polls').doc();
+        final pollId = pollRef.id;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Poll "$pollTitle" created successfully!')),
-      );
+        final pollData = {
+          'title': pollTitle,
+          'description': pollDescription,
+          'candidates': candidates,
+          'startDate': _startDate,
+          'endDate': _endDate,
+          'createdAt': Timestamp.now(),
+          'createdBy': FirebaseAuth.instance.currentUser!.uid,
+          'votes': {for (var candidate in candidates) candidate: 0},
+        };
 
-      // Optionally, navigate to the Poll Details page
-      // Navigator.pushNamed(context, '/poll-detail', arguments: pollId);
+        // Create the poll
+        await pollRef.set(pollData);
+
+        // Create a corresponding document in the votes collection
+        final votesData = {
+          'pollId': pollId,
+          'votes': {for (var candidate in candidates) candidate: 0},
+        };
+        await FirebaseFirestore.instance
+            .collection('votes')
+            .doc(pollId)
+            .set(votesData);
+
+        if (mounted) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Poll "$pollTitle" created successfully!')),
+          );
+
+          // Navigate to home page
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error creating poll: $e')),
+          );
+        }
+      }
     }
   }
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    final now = DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
+      initialDate: now,
+      firstDate: now,
       lastDate: DateTime(2101),
       builder: (BuildContext context, Widget? child) {
         return Theme(
@@ -75,12 +115,15 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
         );
       },
     );
+
     if (picked != null) {
+      final adjustedDate =
+          DateTime(picked.year, picked.month, picked.day, 12, 0, 0);
       setState(() {
         if (isStartDate) {
-          _startDate = picked;
+          _startDate = adjustedDate;
         } else {
-          _endDate = picked;
+          _endDate = adjustedDate;
         }
       });
     }
@@ -104,8 +147,7 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
           key: _formKey,
           child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.center, // Center the elements
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Poll Title
                 Center(
@@ -130,14 +172,13 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Poll Description (Increased height)
+                // Poll Description
                 Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
                     child: TextFormField(
                       controller: _pollDescriptionController,
-                      maxLines:
-                          4, // Increased height by allowing multiple lines
+                      maxLines: 4,
                       decoration: InputDecoration(
                         labelText: 'Poll Description',
                         labelStyle:
@@ -173,17 +214,15 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Center(
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment
-                                .center, // Centers the Row content
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              // Wrap the input in a Flexible widget to allow it to adapt to the screen size
                               Flexible(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8.0),
                                   child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                        maxWidth: 600), // Set max width
+                                    constraints:
+                                        const BoxConstraints(maxWidth: 600),
                                     child: TextFormField(
                                       controller: _candidateControllers[index],
                                       decoration: InputDecoration(
@@ -220,7 +259,7 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
                   onPressed: _addCandidateField,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
-                    maximumSize: const Size(300, 60), // Added max width
+                    maximumSize: const Size(300, 60),
                   ),
                   child: const Text('Add Candidate',
                       style: TextStyle(color: Colors.white)),
@@ -229,8 +268,7 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
 
                 // Voting Duration
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center, // Center the text and button
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       'Voting Start Date: ',
@@ -250,8 +288,7 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
                   ],
                 ),
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center, // Center the text and button
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       'Voting End Date: ',
@@ -279,7 +316,7 @@ class _CreatePollScreenState extends State<CreatePollScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue.shade700,
                       minimumSize: const Size(200, 50),
-                      maximumSize: const Size(300, 60), // Added max width
+                      maximumSize: const Size(300, 60),
                     ),
                     child: const Text('Create Poll',
                         style: TextStyle(color: Colors.white)),

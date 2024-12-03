@@ -13,7 +13,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late User _user;
-  bool _isLoading = false;
+  bool _isLoading = true;
   List<Map<String, dynamic>> _previousPolls = [];
   List<Map<String, dynamic>> _upcomingPolls = [];
   List<Map<String, dynamic>> _activePolls = [];
@@ -26,24 +26,63 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchPollsData() async {
-    await Future.delayed(const Duration(seconds: 2));
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    final pollsSnapshot =
+        await FirebaseFirestore.instance.collection('polls').get();
+
+    // Categorize polls based on the date
+    final currentDate = DateTime.now();
+    List<Map<String, dynamic>> active = [];
+    List<Map<String, dynamic>> upcoming = [];
+    List<Map<String, dynamic>> previous = [];
+
+    for (var doc in pollsSnapshot.docs) {
+      final pollData = doc.data();
+      final startDate = (pollData['startDate'] as Timestamp).toDate();
+      final endDate = (pollData['endDate'] as Timestamp).toDate();
+
+      final poll = {
+        'id': doc.id,
+        'title': pollData['title'],
+        'description': pollData['description'],
+        'startDate': startDate,
+        'endDate': endDate,
+      };
+
+      // Categorize based on the current date
+      if (currentDate.isBefore(startDate)) {
+        upcoming.add(poll);
+      } else if (currentDate.isAfter(endDate)) {
+        previous.add(poll);
+      } else {
+        active.add(poll);
+      }
+    }
+
+    if (!mounted) return;
 
     setState(() {
-      _previousPolls = [
-        {'title': 'Best Movie of 2024', 'date': '2024-01-01', 'id': 'poll_1'},
-        {'title': 'Favorite Song of the Year', 'date': '2023-12-31', 'id': 'poll_2'},
-      ];
-      _upcomingPolls = [
-        {'title': 'Next President Election', 'date': '2025-01-01', 'id': 'poll_3'},
-        {'title': 'Best Mobile App of 2024', 'date': '2024-12-25', 'id': 'poll_4'},
-      ];
-      _activePolls = [
-        {'title': 'Campus Cleanliness Survey', 'date': '2024-12-03', 'id': 'poll_5'},
-        {'title': 'Holiday Party Vote', 'date': '2024-12-03', 'id': 'poll_6'},
-      ];
+      _activePolls = active;
+      _upcomingPolls = upcoming;
+      _previousPolls = previous;
       _isLoading = false;
     });
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to load polls: $e')),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return [
                 PopupMenuItem<String>(
                   value: 'Logout',
-                  child: Text('Logout', style: GoogleFonts.montserrat(fontSize: 16)),
+                  child: Text('Logout',
+                      style: GoogleFonts.montserrat(fontSize: 16)),
                 ),
               ];
             },
@@ -110,7 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_isLoading) ...[
               const CircularProgressIndicator(),
               const SizedBox(height: 20),
-              Text('Loading polls...', style: GoogleFonts.montserrat(color: Colors.blue.shade700)),
+              Text('Loading polls...',
+                  style: GoogleFonts.montserrat(color: Colors.blue.shade700)),
             ] else ...[
               _buildPollsSection('Active Polls', _activePolls),
               const SizedBox(height: 16),
@@ -126,48 +167,41 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.pushNamed(context, '/create-poll');
         },
         backgroundColor: Colors.blue.shade700,
-        child: const Icon(Icons.add,
-        color : Color.fromARGB(255, 255, 255, 255)),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
   Widget _buildPollsSection(String title, List<Map<String, dynamic>> polls) {
-    if (polls.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: GoogleFonts.montserrat(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
-            ),
-            const SizedBox(height: 8),
-            Text('No $title available', style: GoogleFonts.montserrat(color: Colors.blue.shade700)),
-          ],
-        ),
-      );
-    }
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: GoogleFonts.montserrat(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
-          ),
-          SizedBox(width: MediaQuery.of(context).size.width - 32,height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              
-              children: polls.map((poll) {
-                return PollCard(poll: poll);
-              }).toList(),
+            style: GoogleFonts.montserrat(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade700,
             ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity, // Ensures full-width alignment
+            child: polls.isEmpty
+                ? Text(
+                    'No $title available',
+                    style: GoogleFonts.montserrat(color: Colors.blue.shade700),
+                  )
+                : Wrap(
+                    spacing: 16.0, // Space between cards horizontally
+                    runSpacing: 16.0, // Space between cards vertically
+                    alignment: WrapAlignment.start, // Align cards to the start
+                    children: polls.map((poll) {
+                      return PollCard(poll: poll);
+                    }).toList(),
+                  ),
           ),
         ],
       ),
