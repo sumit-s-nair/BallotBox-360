@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,6 +13,7 @@ class SignUpScreen extends StatefulWidget {
 class SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +29,7 @@ class SignUpScreenState extends State<SignUpScreen> {
               children: [
                 // App Title
                 Text(
-                  'Create an Account',
+                  'Ballot Box 360',
                   style: GoogleFonts.montserrat(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -75,9 +77,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Handle sign-up logic
-                    },
+                    onPressed: _isLoading ? null : _signUpWithEmailPassword,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -85,14 +85,16 @@ class SignUpScreenState extends State<SignUpScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: Text(
-                      'Sign Up',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade800,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : Text(
+                            'Sign Up',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -123,9 +125,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      // Implement Google Sign-Up logic
-                    },
+                    onPressed: _signUpWithGoogle,
                     icon: const Icon(
                       FontAwesomeIcons.google,
                       size: 24,
@@ -180,4 +180,73 @@ class SignUpScreenState extends State<SignUpScreen> {
       ),
     );
   }
+
+  // Email/Password Sign-Up Logic
+  Future<void> _signUpWithEmailPassword() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'email-already-in-use':
+          errorMessage = 'The email address is already in use.';
+          break;
+        case 'weak-password':
+          errorMessage = 'The password is too weak.';
+          break;
+        default:
+          errorMessage = 'An error occurred. Please try again.';
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Google Sign-Up Logic with Popup sign-in
+Future<void> _signUpWithGoogle() async {
+  try {
+    // Trigger the Google Authentication flow
+    final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+
+    // Use Firebase Authentication to sign in with Google
+    // ignore: unused_local_variable
+    final UserCredential userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+
+    if (!mounted) return;
+
+    // Navigate to the home page after successful login
+    Navigator.pushReplacementNamed(context, '/home');
+  } on FirebaseAuthException catch (e) {
+    // Handle error messages from Firebase
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Google sign-in failed: ${e.message}')),
+    );
+  } catch (e) {
+    // Handle any other errors
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An unexpected error occurred: $e')),
+    );
+  }
+}
 }

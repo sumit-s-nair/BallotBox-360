@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,14 +15,100 @@ class LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final FocusNode _emailFocusNode = FocusNode();
 
+  bool _isLoading = false;
+  final bool _isGoogleLoading = false;
+
   @override
   void initState() {
     super.initState();
-    // Auto-focus the email field when the screen is loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      FocusScope.of(context).requestFocus(_emailFocusNode); // Set focus to email
+      FocusScope.of(context).requestFocus(_emailFocusNode); // Focus email field
     });
   }
+
+  @override
+  void dispose() {
+    // Dispose of controllers and focus node to prevent memory leaks
+    _emailController.dispose();
+    _passwordController.dispose();
+    _emailFocusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loginWithEmailPassword() async {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email and password cannot be empty')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found for this email.';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Invalid password.';
+          break;
+        default:
+          errorMessage = 'An error occurred. Please try again.';
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+  try {
+    // Trigger the Google Authentication flow
+    final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+
+    // Use Firebase Authentication to sign in with Google
+    // ignore: unused_local_variable
+    final UserCredential userCredential = await FirebaseAuth.instance.signInWithPopup(googleProvider);
+
+    if (!mounted) return;
+
+    // Navigate to the home page after successful login
+    Navigator.pushReplacementNamed(context, '/home');
+  } on FirebaseAuthException catch (e) {
+    // Handle error messages from Firebase
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Google sign-in failed: ${e.message}')),
+    );
+  } catch (e) {
+    // Handle any other errors
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('An unexpected error occurred: $e')),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +124,7 @@ class LoginScreenState extends State<LoginScreen> {
               children: [
                 // App Title
                 Text(
-                  'VoteSphere',
+                  'Ballot Box 360',
                   style: GoogleFonts.montserrat(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -49,7 +136,7 @@ class LoginScreenState extends State<LoginScreen> {
                 // Email Field
                 TextField(
                   controller: _emailController,
-                  focusNode: _emailFocusNode, // Apply the focus node
+                  focusNode: _emailFocusNode,
                   decoration: InputDecoration(
                     labelText: 'Email',
                     labelStyle: const TextStyle(color: Colors.white),
@@ -101,9 +188,7 @@ class LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/home');
-                    },
+                    onPressed: _isLoading ? null : _loginWithEmailPassword,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
@@ -111,14 +196,16 @@ class LoginScreenState extends State<LoginScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: Text(
-                      'Login',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade800,
-                      ),
-                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : Text(
+                            'Login',
+                            style: GoogleFonts.montserrat(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -149,14 +236,14 @@ class LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () {
-                      // Implement Google Sign-In logic
-                    },
-                    icon: const Icon(
-                      FontAwesomeIcons.google,
-                      size: 24,
-                      color: Colors.white,
-                    ),
+                    onPressed: _isGoogleLoading ? null : _loginWithGoogle,
+                    icon: _isGoogleLoading
+                        ? const CircularProgressIndicator()
+                        : const Icon(
+                            FontAwesomeIcons.google,
+                            size: 24,
+                            color: Colors.white,
+                          ),
                     label: Text(
                       'Sign in with Google',
                       style: GoogleFonts.montserrat(
