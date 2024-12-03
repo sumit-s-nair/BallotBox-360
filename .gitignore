@@ -41,3 +41,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Ignore Firebase options file
+lib/firebase_options.dart
+
+google-services.json
+GoogleService-Info.plist
+firebase.json
+
+# IDE-specific files
+.idea/
+.vscode/
+.android/
+.ios/
+.gradle/
+*.iml
+*.swp
+
