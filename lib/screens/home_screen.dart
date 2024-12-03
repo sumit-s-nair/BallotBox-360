@@ -70,10 +70,6 @@ class _HomeScreenState extends State<HomeScreen> {
             itemBuilder: (BuildContext context) {
               return [
                 PopupMenuItem<String>(
-                  value: 'Profile',
-                  child: Text('Profile', style: GoogleFonts.montserrat(fontSize: 16)),
-                ),
-                PopupMenuItem<String>(
                   value: 'Logout',
                   child: Text('Logout', style: GoogleFonts.montserrat(fontSize: 16)),
                 ),

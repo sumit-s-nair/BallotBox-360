@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class PollDetailScreen extends StatefulWidget {
-  const PollDetailScreen({Key? key}) : super(key: key);
+  const PollDetailScreen({super.key});
 
   @override
   State<PollDetailScreen> createState() => _PollDetailScreenState();
@@ -23,78 +23,138 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Retrieve pollId from route arguments
     final String pollId = ModalRoute.of(context)!.settings.arguments as String;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Poll Details: $pollId', style: GoogleFonts.montserrat(fontSize: 22)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Poll Details: $pollId',
+          style: GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: Colors.blue.shade700,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              'Poll: $pollId',
-              style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            Text('Vote for your preferred candidate:', style: GoogleFonts.montserrat(fontSize: 16)),
-            const SizedBox(height: 16),
-            Column(
-              children: _candidates.map((candidate) {
-                return ListTile(
-                  title: Text(candidate['name'], style: GoogleFonts.montserrat(fontSize: 16)),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        if (!_hasVoted) {
-                          candidate['votes']++;
-                          _hasVoted = true;
-                        }
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                    ),
-                    child: Text(_hasVoted ? 'Voted' : 'Vote'),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-            if (_hasVoted) ...[
-              Text('Voting Results:', style: GoogleFonts.montserrat(fontSize: 18)),
-              const SizedBox(height: 16),
-              // Display progress bars for all candidates
-              ..._candidates.map((candidate) {
-                final totalVotes = _getTotalVotes();
-                final votePercentage = totalVotes > 0
-                    ? (candidate['votes'] / totalVotes)
-                    : 0.0;
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Poll Title and Description
+                Text(
+                  'Vote for your preferred candidate:',
+                  style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Select a candidate to cast your vote and view the results!',
+                  style: GoogleFonts.montserrat(fontSize: 16, fontWeight: FontWeight.w400),
+                ),
+                const SizedBox(height: 24),
+                
+                // Candidates List
+                ListView.builder(
+                  shrinkWrap: true, // Makes the list take only the needed space
+                  itemCount: _candidates.length,
+                  itemBuilder: (context, index) {
+                    final candidate = _candidates[index];
+                    final totalVotes = _getTotalVotes();
+                    // ignore: unused_local_variable
+                    final votePercentage = totalVotes > 0
+                        ? (candidate['votes'] / totalVotes)
+                        : 0.0;
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${candidate['name']} - ${(votePercentage * 100).toStringAsFixed(2)}%',
-                        style: GoogleFonts.montserrat(fontSize: 16),
+                    return Card(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: votePercentage,
-                        backgroundColor: Colors.grey.shade300,
-                        color: Colors.blue.shade700,
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      elevation: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Candidate Name
+                            Expanded(
+                              child: Text(
+                                candidate['name'],
+                                style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            // Vote Button
+                            ElevatedButton(
+                              onPressed: _hasVoted
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        candidate['votes']++;
+                                        _hasVoted = true;
+                                      });
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _hasVoted ? Colors.grey : Colors.blue.shade700,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: Text(
+                                _hasVoted ? 'Voted' : 'Vote',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
+                    );
+                  },
+                ),
+                
+                // Voting Results
+                if (_hasVoted) ...[
+                  const SizedBox(height: 24),
+                  Text(
+                    'Voting Results:',
+                    style: GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                );
-              }).toList(),
-            ],
-          ],
+                  const SizedBox(height: 16),
+                  // Display progress bars for all candidates
+                  ..._candidates.map((candidate) {
+                    final totalVotes = _getTotalVotes();
+                    final votePercentage = totalVotes > 0
+                        ? (candidate['votes'] / totalVotes)
+                        : 0.0;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${candidate['name']} - ${(votePercentage * 100).toStringAsFixed(2)}%',
+                            style: GoogleFonts.montserrat(fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: votePercentage,
+                            backgroundColor: Colors.grey.shade300,
+                            color: Colors.blue.shade700,
+                            minHeight: 8,
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );

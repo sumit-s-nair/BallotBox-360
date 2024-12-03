@@ -1,3 +1,4 @@
+import 'screens/create_poll_screen.dart';
 import 'screens/poll_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'screens/auth/login_screen.dart';
@@ -32,8 +33,9 @@ class VoteSphereApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
-        '/home': (context) => const HomeScreen(),
+        '/home': (context) => const ProtectedRoute(child: HomeScreen()),
         '/poll-details': (context) => const ProtectedRoute(child: PollDetailScreen()),
+        '/create-poll': (context) => const ProtectedRoute(child: CreatePollScreen()),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
         
       },

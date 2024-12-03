@@ -33,7 +33,7 @@ class PollCard extends StatelessWidget {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.network(
-                      'https://via.placeholder.com/350x200', // Placeholder image
+                      'https://via.placeholder.com/350x200',
                       fit: BoxFit.cover,
                       height: 200,
                       width: double.infinity,
@@ -43,11 +43,13 @@ class PollCard extends StatelessWidget {
                   // Poll title
                   Text(
                     poll['title'],
-                    style: GoogleFonts.montserrat(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: GoogleFonts.montserrat(
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   // Poll date
-                  Text('Date: ${poll['date']}', style: GoogleFonts.montserrat(fontSize: 14)),
+                  Text('Date: ${poll['date']}',
+                      style: GoogleFonts.montserrat(fontSize: 14)),
                   const SizedBox(height: 8),
                   // Button to navigate to the poll details screen
                   ElevatedButton(
@@ -62,7 +64,10 @@ class PollCard extends StatelessWidget {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue.shade700, // Button color
                     ),
-                    child: const Text('View Details'),
+                    child: const Text(
+                      'View Details',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
